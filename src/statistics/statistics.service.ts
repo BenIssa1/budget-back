@@ -156,7 +156,7 @@ export class StatisticsService {
       }, {} as Record<string, number>);
 
     const topCalledNumbers = Object.entries(calledNumbers)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([,a], [,b]) => Number(b) - Number(a))
       .slice(0, 10)
       .map(([number, count]) => ({ number, calls: count }));
 
