@@ -516,7 +516,7 @@ export class StatisticsService {
       totalCost: recentCalls.reduce((sum, call) => sum + (call.cost || 0), 0),
       byDay: Object.entries(callsByDay).map(([day, stats]) => ({
         day,
-        ...stats
+        ...(stats as { calls: number; duration: number; cost: number })
       }))
     };
   }
