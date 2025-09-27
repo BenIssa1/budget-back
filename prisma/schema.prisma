@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  firstName String   @db.VarChar(65)
+  lastName  String   @db.VarChar(65)
+  email     String   @unique @db.VarChar(255)
+  role      String   @default("User")
+  password  String   @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt()
+}
+
+model Service {
+  id          Int      @id @default(autoincrement())
+  label       String   @unique @db.VarChar(225)
+  description String   @db.Text
+  createdAt   DateTime @default(now())
+  updateAt    DateTime @updatedAt()
+  
+  // Relation one-to-many avec Extension
+  extensions  Extension[]
+}
+
+model budget {
+  id          Int      @id @default(autoincrement())
+  label       String   @unique @db.VarChar(225)
+  amount      Decimal  @db.Decimal(10, 2)
+  description String   @db.Text
+  createdAt   DateTime @default(now())
+  updateAt    DateTime @updatedAt()
+  
+  // Relation one-to-many avec Extension
+  extensions  Extension[]
+}
+
+model PricingFree {
+  id          Int      @id @default(autoincrement())
+  contact     String @unique
+  description String   @db.Text
+  createdAt   DateTime @default(now())
+  updateAt    DateTime @updatedAt()
+}
+
+model PaidPricing {
+  id          Int      @id @default(autoincrement())
+  ordernumber String @unique
+  prefix      String
+  amount      Decimal  @db.Decimal(10, 2)
+  description String   @db.Text
+  createdAt   DateTime @default(now())
+  updateAt    DateTime @updatedAt()
+}
+
+model Extension {
+  id             Int    @id
+  number         String @unique
+  callerIdName   String?
+  emailAddr      String?
+  mobileNumber   String?
+  timezone       String?
+  presenceStatus String?
+  balance        Float?
+  
+  // Relations many-to-one
+  serviceId Int?
+  service   Service? @relation(fields: [serviceId], references: [id])
+  budgetId  Int?
+  budget    budget?  @relation(fields: [budgetId], references: [id])
+  
+  // Relation one-to-many avec Call
+  calls     Call[]
+}
+
+model Call {
+  id               Int      @id @default(autoincrement())
+  call_id          String   @unique
+  extension_number String
+  start_time       DateTime
+  end_time         DateTime?
+  duration_seconds Int?
+  cost             Float?
+  
+  // Relation many-to-one avec Extension
+  extensionId Int?
+  extension   Extension? @relation(fields: [extensionId], references: [id])
+}
+
+model Configuration {
+  id        Int      @id @default(autoincrement())
+  ip        String   @db.VarChar(45) // IPv4 ou IPv6
+  clientId  String   @db.VarChar(255)
+  secretId  String   @db.VarChar(255)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt()
+}
