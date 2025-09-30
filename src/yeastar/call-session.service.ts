@@ -180,6 +180,46 @@ export class CallSessionService {
         }
     }
 
+    async checkBalanceAndHangupIfNeeded(extensionNumber: string, extensionChannelId: string, calledNumber?: string) {
+        const extension = await this.prisma.extension.findUnique({
+            where: { number: extensionNumber },
+        });
+
+        if (!extension) {
+            this.logger.warn(`Extension ${extensionNumber} introuvable.`);
+            return;
+        }
+
+        // Vérifier si le numéro appelé est gratuit
+        let isFreeCall = false;
+        if (calledNumber) {
+            isFreeCall = await this.pricingFreeService.isFreeNumber(calledNumber);
+        }
+
+        // Si c'est un appel gratuit, on ne vérifie pas le solde
+        if (isFreeCall) {
+            this.logger.log(`🆓 Appel gratuit vers ${calledNumber} - Pas de vérification de solde`);
+            return;
+        }
+
+        // Vérifier si l'extension a un solde suffisant
+        let pricePerMinute = 100; // Prix par défaut
+        if (calledNumber) {
+            pricePerMinute = await this.paidPricingService.getPricingForNumber(calledNumber);
+        }
+
+        const maxMinutes = Math.floor(extension.balance / pricePerMinute);
+
+        if (extension.balance <= 0 || maxMinutes <= 0) {
+            this.logger.warn(`💰 Extension ${extensionNumber} n'a pas de solde suffisant (${extension.balance}) pour appeler ${calledNumber} (${pricePerMinute}/min)`);
+            
+            // Raccrocher immédiatement l'appel
+            await this.hangupCall(extensionNumber, extensionChannelId, calledNumber);
+        } else {
+            this.logger.log(`✅ Extension ${extensionNumber} a un solde suffisant (${extension.balance}) pour ${maxMinutes} minutes`);
+        }
+    }
+
     private readonly httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
     private async hangupCall(extensionNumber: string, extensionChannelId: string, calledNumber?: string) {

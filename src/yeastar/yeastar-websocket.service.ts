@@ -92,6 +92,9 @@ export class YeastarWebSocketService implements OnModuleInit, OnModuleDestroy {
                             await this.callSessionService.startCall(extensionNumber, callId, extensionChannelId,  outboundMember.outbound.to);
                         } else if (extensionStatus === 'ALERT' || extensionStatus === 'RING') {
                             this.logger.log(`📞 Sonnerie sur extension ${extensionNumber} vers ${calledNumber} (callId: ${callId})`);
+                            
+                            // Vérifier le solde dès la détection de l'appel
+                            await this.callSessionService.checkBalanceAndHangupIfNeeded(extensionNumber, extensionChannelId, calledNumber);
                         }
 
                         break;
