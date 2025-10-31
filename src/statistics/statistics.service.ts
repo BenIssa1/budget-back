@@ -341,6 +341,9 @@ export class StatisticsService {
       const monthlyBudget = budgetHistory ? budgetHistory.budgetAmount : ( 0);
       const budgetLabel = budgetHistory ? budgetHistory.budgetLabel : 'Non défini';
 
+      // S'assurer que remainingBudget ne soit pas négatif
+      const remainingBudget = Math.max(0, monthlyBudget - totalCost);
+
       return {
         extensionId: extension.id,
         extensionNumber: extension.number,
@@ -351,7 +354,7 @@ export class StatisticsService {
         cost: totalCost,
         monthlyBudget: monthlyBudget,
         budgetLabel: budgetLabel,
-        remainingBudget: monthlyBudget - totalCost,
+        remainingBudget: remainingBudget,
         budgetUsagePercentage: monthlyBudget > 0 ? Math.round((totalCost / monthlyBudget) * 100) : 0
       };
     });
