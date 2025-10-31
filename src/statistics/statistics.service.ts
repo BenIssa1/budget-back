@@ -298,13 +298,14 @@ export class StatisticsService {
   // Export de la consommation par extension et par mois
   async getMonthlyConsumptionByExtension(year?: number, month?: number) {
     const now = new Date();
-    const targetYear = year || now.getFullYear();
-    const targetMonth = month || now.getMonth() + 1;
+    // S'assurer que year et month sont bien des nombres entiers
+    const targetYear = year ? parseInt(year.toString(), 10) : now.getFullYear();
+    const targetMonth = month ? parseInt(month.toString(), 10) : now.getMonth() + 1;
 
     const startDate = new Date(targetYear, targetMonth - 1, 1);
     const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59);
 
-    // Récupérer toutes les extensions avec leurs appels du mois
+    // Récupérer toutes les extensions avec leurs appels du mois et l'historique du budget 
     const extensions = await this.prisma.extension.findMany({
       include: {
         calls: {
@@ -314,6 +315,13 @@ export class StatisticsService {
               lte: endDate
             }
           }
+        },
+        budgetHistory: {
+          where: {
+            year: targetYear,
+            month: targetMonth
+          },
+          take: 1
         }
       }
     });
@@ -325,6 +333,14 @@ export class StatisticsService {
       const totalCalls = extension.calls.length;
       const durationInMinutes = Math.round(totalDuration / 60);
 
+      // Récupérer le budget du mois depuis l'historique, sinon utiliser la balance actuelle
+      const budgetHistory = extension.budgetHistory && extension.budgetHistory.length > 0 
+        ? extension.budgetHistory[0] 
+        : null;
+      
+      const monthlyBudget = budgetHistory ? budgetHistory.budgetAmount : ( 0);
+      const budgetLabel = budgetHistory ? budgetHistory.budgetLabel : 'Non défini';
+
       return {
         extensionId: extension.id,
         extensionNumber: extension.number,
@@ -333,7 +349,10 @@ export class StatisticsService {
         durationSeconds: totalDuration,
         durationMinutes: durationInMinutes,
         cost: totalCost,
-        balance: extension.balance || 0
+        monthlyBudget: monthlyBudget,
+        budgetLabel: budgetLabel,
+        remainingBudget: monthlyBudget - totalCost,
+        budgetUsagePercentage: monthlyBudget > 0 ? Math.round((totalCost / monthlyBudget) * 100) : 0
       };
     });
 
@@ -357,8 +376,13 @@ export class StatisticsService {
         totalCalls: consumptionData.reduce((sum, ext) => sum + ext.calls, 0),
         totalDuration: consumptionData.reduce((sum, ext) => sum + ext.durationMinutes, 0),
         totalCost: consumptionData.reduce((sum, ext) => sum + ext.cost, 0),
+        totalBudget: consumptionData.reduce((sum, ext) => sum + ext.monthlyBudget, 0),
+        totalRemainingBudget: consumptionData.reduce((sum, ext) => sum + ext.remainingBudget, 0),
         averageCostPerExtension: consumptionData.length > 0 
           ? Math.round(consumptionData.reduce((sum, ext) => sum + ext.cost, 0) / consumptionData.length) 
+          : 0,
+        averageBudgetUsagePercentage: consumptionData.length > 0
+          ? Math.round(consumptionData.reduce((sum, ext) => sum + ext.budgetUsagePercentage, 0) / consumptionData.length)
           : 0
       }
     };
@@ -453,7 +477,10 @@ export class StatisticsService {
       'Nombre d\'appels',
       'Durée (minutes)',
       'Coût total',
-      'Solde actuel'
+      'Budget mensuel',
+      'Label Budget',
+      'Budget restant',
+      'Utilisation (%)'
     ];
 
     // Données CSV
@@ -464,7 +491,10 @@ export class StatisticsService {
       ext.calls,
       ext.durationMinutes,
       ext.cost,
-      ext.balance
+      ext.monthlyBudget,
+      ext.budgetLabel,
+      ext.remainingBudget,
+      ext.budgetUsagePercentage
     ]);
 
     // Créer le contenu CSV

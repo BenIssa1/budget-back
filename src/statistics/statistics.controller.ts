@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Param, Res, Header } from '@nestjs/common';
+import { Controller, Get, Query, Param, Res, Header, ParseIntPipe } from '@nestjs/common';
 import { Response } from 'express';
 import { StatisticsService } from './statistics.service';
 

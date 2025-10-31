@@ -83,6 +83,26 @@ model Extension {
   
   // Relation one-to-many avec Call
   calls     Call[]
+  
+  // Relation one-to-many avec ExtensionBudgetHistory
+  budgetHistory ExtensionBudgetHistory[]
+}
+
+model ExtensionBudgetHistory {
+  id            Int      @id @default(autoincrement())
+  extensionId   Int
+  year          Int
+  month         Int      // 1-12
+  budgetAmount  Float
+  budgetLabel   String?  @db.VarChar(225)
+  createdAt     DateTime @default(now())
+  
+  // Relation many-to-one avec Extension
+  extension     Extension @relation(fields: [extensionId], references: [id], onDelete: Cascade)
+  
+  // Index composite pour éviter les doublons et optimiser les recherches
+  @@unique([extensionId, year, month])
+  @@index([year, month])
 }
 
 model Call {
